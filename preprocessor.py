@@ -5,7 +5,10 @@ import pyspark.sql.functions as F
 def show_basic_statistics(df: DataFrame, dataset_name: str):
     print(f"\n=== АНАЛІЗ: {dataset_name} ===")
 
-    print(f"Загальна кількість записів: 173,179,759 (прочитано з логів)")
+    # total_fares = fare_df.count()
+    # print(f"Загальна кількість записів у Fare Data: {total_fares:,}")
+
+    print(f"Загальна кількість записів у кожному наборі: 173,179,759 (прочитано з логів)")
 
     print("Створюємо вибірку для аналізу (0.1% даних)...")
     sample_df = df.sample(withReplacement=False, fraction=0.001, seed=42)

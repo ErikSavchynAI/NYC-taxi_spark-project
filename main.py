@@ -28,10 +28,8 @@ def main():
     fare_df.show(5)
 
 
-    #show_basic_statistics(trip_df, "Trip Data")
+    show_basic_statistics(trip_df, "Trip Data")
     show_basic_statistics(fare_df, "Fare Data")
-
-
 
 
     print("Попередня обробка для зрізу 50тис.")
