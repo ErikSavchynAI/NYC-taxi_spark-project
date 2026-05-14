@@ -1,9 +1,11 @@
 import os
 import time
 import logging
+import contextlib
+from tqdm import tqdm
 from pyspark.sql import SparkSession
 from extractor import get_trip_data_schema, get_fare_data_schema, load_data
-from preprocessor import show_basic_statistics, preprocess_data
+from preprocessor import preprocess_data
 import transformations as T
 import visualizer as V
 
@@ -19,23 +21,30 @@ def save_result(df, name):
 
 
 def execute_and_log(name, desc, df, visualize=False):
-    logger.info(f"Початок: {desc}")
     start_time = time.time()
-    df.explain()
+
+    os.makedirs("data/results", exist_ok=True)
+    with open(f"data/results/{name}_plan.txt", "w") as f:
+        with contextlib.redirect_stdout(f):
+            df.explain()
+
     save_result(df, name)
     if visualize:
         V.plot_query(df, name)
+
     elapsed = time.time() - start_time
-    logger.info(f"Завершено: {desc} | Час: {elapsed:.2f} с")
+    return elapsed
 
 
 def main():
     spark = SparkSession.builder \
         .appName("NYC_Taxi_2013_ETL") \
         .master("local[*]") \
-        .config("spark.driver.memory", "4g") \
-        .config("spark.sql.shuffle.partitions", "8") \
+        .config("spark.driver.memory", "3g") \
+        .config("spark.sql.shuffle.partitions", "16") \
         .config("spark.memory.fraction", "0.8") \
+        .config("spark.sql.files.maxPartitionBytes", "67108864") \
+        .config("spark.ui.showConsoleProgress", "true") \
         .getOrCreate()
 
     spark.sparkContext.setLogLevel("ERROR")
@@ -51,35 +60,31 @@ def main():
     trip_df_cleaned = preprocess_data(trip_df, "Trip Data")
     fare_df_cleaned = preprocess_data(fare_df, "Fare Data")
 
-    logger.info("Кешування даних у пам'ять (це найдовший етап)...")
+    logger.info("Кешування даних у пам'ять...")
     trip_df_cleaned.cache()
     fare_df_cleaned.cache()
 
     trip_count = trip_df_cleaned.count()
     fare_count = fare_df_cleaned.count()
-    logger.info(f"Дані успішно закешовано. Рядків Trip: {trip_count}, Fare: {fare_count}")
+    logger.info(f"Дані закешовано. Рядків Trip: {trip_count}, Fare: {fare_count}")
 
-    logger.info("Виконання бізнес-трансформацій...")
+    queries = [
+        ("q1_avg_tip", "Q1: Чайові від пасажирів", T.get_avg_tip_by_passenger_count(trip_df_cleaned, fare_df_cleaned),
+         True),
+        ("q2_no_tip", "Q2: Найдовші без чайових", T.get_longest_trips_no_tip_crd(trip_df_cleaned, fare_df_cleaned),
+         False),
+        ("q3_revenue_vendor", "Q3: Дохід за постачальником", T.get_total_revenue_by_vendor(fare_df_cleaned), True),
+        ("q4_daily_ma", "Q4: Щоденний дохід та ковзне", T.get_daily_revenue_moving_avg(fare_df_cleaned), True),
+        ("q5_top3_vendor", "Q5: Топ 3 дорогі поїздки", T.get_top_3_expensive_trips_per_vendor(fare_df_cleaned), False),
+        ("q6_fast_exp", "Q6: Швидкі та дорогі", T.get_fast_expensive_trips(trip_df_cleaned, fare_df_cleaned), False)
+    ]
 
-    q1 = T.get_avg_tip_by_passenger_count(trip_df_cleaned, fare_df_cleaned)
-    execute_and_log("q1_avg_tip", "Q1: Чайові від кількості пасажирів", q1, True)
+    logger.info("Виконання трансформацій...")
 
-    q2 = T.get_longest_trips_no_tip_crd(trip_df_cleaned, fare_df_cleaned)
-    execute_and_log("q2_no_tip", "Q2: Найдовші поїздки без чайових", q2, False)
+    for name, desc, df, vis in tqdm(queries, desc="Прогрес запитів", unit="запит"):
+        elapsed = execute_and_log(name, desc, df, vis)
+        logger.info(f"Завершено: {desc} | {elapsed:.2f} с")
 
-    q3 = T.get_total_revenue_by_vendor(fare_df_cleaned)
-    execute_and_log("q3_revenue_vendor", "Q3: Дохід за постачальником", q3, True)
-
-    q4 = T.get_daily_revenue_moving_avg(fare_df_cleaned)
-    execute_and_log("q4_daily_ma", "Q4: Щоденний дохід та ковзне середнє", q4, True)
-
-    q5 = T.get_top_3_expensive_trips_per_vendor(fare_df_cleaned)
-    execute_and_log("q5_top3_vendor", "Q5: Топ 3 найдорожчі поїздки", q5, False)
-
-    q6 = T.get_fast_expensive_trips(trip_df_cleaned, fare_df_cleaned)
-    execute_and_log("q6_fast_exp", "Q6: Швидкі та дорогі поїздки", q6, False)
-
-    logger.info("Усі операції завершено.")
     spark.stop()
 
 

@@ -1,7 +1,10 @@
 import os
+import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+
+warnings.filterwarnings("ignore")
 
 
 def plot_query(df, name):
@@ -15,13 +18,13 @@ def plot_query(df, name):
     sns.set_theme(style="whitegrid")
 
     if name == "q1_avg_tip":
-        sns.barplot(data=pdf, x="passenger_count", y="avg_tip", palette="viridis")
+        sns.barplot(data=pdf, x="passenger_count", y="avg_tip", hue="passenger_count", palette="viridis", legend=False)
         plt.title("Середній розмір чайових залежно від кількості пасажирів")
         plt.xlabel("Кількість пасажирів")
         plt.ylabel("Середні чайові ($)")
 
     elif name == "q3_revenue_vendor":
-        sns.barplot(data=pdf, x="vendor_id", y="total_revenue", palette="Set2")
+        sns.barplot(data=pdf, x="vendor_id", y="total_revenue", hue="vendor_id", palette="Set2", legend=False)
         plt.title("Сумарний дохід за постачальником послуг")
         plt.xlabel("Постачальник")
         plt.ylabel("Дохід ($)")
