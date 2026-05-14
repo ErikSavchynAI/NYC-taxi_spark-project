@@ -46,9 +46,7 @@ def preprocess_data(df: DataFrame, dataset_name: str) -> DataFrame:
     df = df.drop(*[c for c in cols_to_drop if c in df.columns])
     print(f"  - Вилучено неінформативні колонки ")
 
-
     print("  - Видалення дублікатів та логічне очищення ")
-
 
     df = df.dropDuplicates()
 

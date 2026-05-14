@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from extractor import get_trip_data_schema, get_fare_data_schema, load_data
 from preprocessor import show_basic_statistics, preprocess_data
 
+
 def main():
     print("Ініціалізація Spark...")
     spark = SparkSession.builder \
@@ -27,10 +28,8 @@ def main():
     print("\n--- Перші 5 записів Fare Data ---")
     fare_df.show(5)
 
-
     show_basic_statistics(trip_df, "Trip Data")
     show_basic_statistics(fare_df, "Fare Data")
-
 
     print("Попередня обробка для зрізу 50тис.")
     trip_df_test = trip_df.limit(50000)
@@ -49,5 +48,7 @@ def main():
     fare_df_cleaned.select("fare_amount", "tip_amount", "total_amount").summary().show()
 
     spark.stop()
+
+
 if __name__ == "__main__":
     main()
