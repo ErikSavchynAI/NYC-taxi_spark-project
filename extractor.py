@@ -38,8 +38,4 @@ def get_fare_data_schema() -> StructType:
 
 
 def load_data(spark: SparkSession, folder_path: str, schema: StructType):
-    """
-    Зчитує всі CSV файли з вказаної папки, використовуючи задану схему.
-    PySpark автоматично розпаковує .zip архіви під час зчитування.
-    """
     return spark.read.csv(folder_path, header=True, schema=schema)
